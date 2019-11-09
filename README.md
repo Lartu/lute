@@ -6,9 +6,15 @@
 
 **Lute**, Lartu's Utility for Text Editing, is a simple, no-nonsense text editor for Unix and general \*nix systems written in LDPL. While written as a proof of concept for the [LDPL Programming Language](https://github.com/lartu/ldpl), Lute is completely functional and has been written using mostly itself as the text editor for its code.
 
+![Lute Screenshot](images/screenshot.png)
+
 ### Building Lute
 
 Clone this repository, `cd` it and run `ldpl lute.ldpl -o=lute`.
+
+### Releases
+
+You can download pre-compiled binaries of Lute for amd64 Linux from the [releases](https://github.com/Lartu/lute/releases) section of this repository.
 
 ### Usage
 
