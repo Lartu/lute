@@ -10,7 +10,7 @@
 
 ### Building Lute
 
-Clone this repository, `cd` it and run `ldpl lute.ldpl -o=lute`.
+Clone this repository, `cd` it and run `ldpl lute.ldpl -o=lute`. You need to have [LDPL](https://github.com/lartu/ldpl) and **libncurses** installed to build Lute. If you are on Debian, you may install libncurses by running `apt install libncurses-dev`.
 
 ### Releases
 
