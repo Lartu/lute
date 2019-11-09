@@ -30,6 +30,7 @@ Run `lute <file>` to open `<file>` and edit it.
  - **Control-T**: change UI colors.
  - **Control-K**: add a line to the copy-stack.
  - **Control-U**: paste all the copy-stack before the current line.
+ - **Control-R**: empty the copy-stack.
  - **Control-D**: delete the current line.
  
  ### License
