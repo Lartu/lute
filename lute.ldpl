@@ -1,0 +1,619 @@
+#  _       _       
+# | |     | |          
+# | |_   _| |_ ___
+# | | | | | __/ _ \
+# | | |_| | ||  __/
+# |_|\__,_|\__\___|
+#
+# Lartu's Utility for Text Editing
+# Written by Martín del Río - 2019 (7/nov/2019)
+# Changelog:
+# 1.0 - Initial release (9/nov/2019)
+
+# TODOs:
+# - Confirm to save (filename dialog)
+# - C-W y C-F to search
+# - C-H to replace
+
+# --- Includes ---
+include "ldpl-ncurses/ldpl-ncurses.ldpl"
+using package std-list
+
+# --- Data ---
+data:
+currentChar           is text
+currentCharLen        is number
+cursorY               is number
+cursorX               is number
+row                   is number
+rowOffset             is number
+column                is number
+columnOffset          is number
+screenHeight          is number
+screenWidth           is number
+title                 is text
+lines                 is text list
+lineCount             is number
+debugMode             is number
+filename              is text
+fileContents          is text
+saved                 is number
+argl                  is number
+i                     is number
+mainColor             is number
+currentLineLength     is number
+copyStack             is text list
+copyStackLength       is number
+
+# --- Procedure ---
+procedure:
+push "" to lines
+get length of argv in argl
+if argl is equal to 0 then
+ store "unnamed.txt" in filename
+else
+ store argv:0 in filename
+ load file filename in fileContents
+ if errorcode is equal to 0 then
+  split fileContents by "\n" in lines
+  store 1 in saved
+ end if
+end if
+nc initialize
+nc enable color
+nc disable echo
+store 2 in mainColor
+nc set color mainColor
+nc set non blocking input
+while 1 is equal to 1 do
+ nc get size in screenWidth screenHeight
+ get length of lines in lineCount
+ get length of copyStack in copyStackLength
+ store " lute " in title
+ call locateCursor
+ get length of lines:row in currentLineLength
+ if copyStackLength is greater than 0 then
+    in title join title "(" copyStackLength ") "
+ end if
+ if debugMode is equal to 1 then
+  in title join title "═ y" cursorY "/r" row "/ro" rowOffset "/lc" lineCount "/x" cursorX "/c" column "/co" columnOffset "/ll" currentLineLength " "
+ end if
+ nc box title 0 0 screenWidth screenHeight
+ call writeLineNumber
+ call writeFilename
+ call drawText
+ call locateCursor
+ # --- Input ---
+ nc get key in currentChar
+ get length of currentChar in currentCharLen
+ if currentCharLen is equal to 1 then
+  call addChar
+ else
+  if currentChar is equal to "DOWN" then
+   call moveCursorDown
+  else if currentChar is equal to "UP" then
+   call moveCursorUp
+  else if currentChar is equal to "PAGEDOWN" then
+   for i from 0 to 10 step 1 do
+    call moveCursorDown
+   repeat
+  else if currentChar is equal to "PAGEUP" then
+   for i from 0 to 10 step 1 do
+    call moveCursorUp
+   repeat
+  else if currentChar is equal to "END" then
+    call locateXEnd
+  else if currentChar is equal to "HOME" then
+    store 0 in column
+    store 0 in columnOffset
+    store 1 in cursorX
+  else if currentChar is equal to "RIGHT" then
+   call moveCursorRight
+   call moveToNextLine 
+  else if currentChar is equal to "LEFT" then
+   call moveCursorLeft
+  else if currentChar is equal to "C-I" then
+   store "    " in currentChar
+   call addChar
+  else if currentChar is equal to "C-M" then
+   call lineBreak
+   store 0 in saved
+  else if currentChar is equal to "C-W" then
+   if debugMode is equal to 0 then
+    store 1 in debugMode
+    call showMessageDialog with "Debug mode ON"
+   else
+    store 0 in debugMode
+    call showMessageDialog with "Debug mode OFF"
+   end if
+  else if currentChar is equal to "C-O" then
+   call save
+  else if currentChar is equal to "C-X" then
+   nc clean up
+   exit
+  else if currentChar is equal to "C-T" then
+    in mainColor solve mainColor + 1
+    modulo mainColor by 7 in mainColor
+    in mainColor solve mainColor + 1
+    nc set color mainColor
+  else if currentChar is equal to "C-D" then
+   call spliceLine
+   store 0 in saved
+   if row is greater than 0 then
+    call moveCursorDown
+   end if
+  else if currentChar is equal to "C-K" then
+   push lines:row to copyStack
+   call spliceLine
+   store 0 in saved
+  else if currentChar is equal to "C-U" then
+   if copyStackLength is greater than 0 then
+       call insertCopyStack
+   else
+        call showMessageDialog with "Nothing to paste"
+   end if
+  else if currentChar is equal to "C-R" then
+   clear copyStack
+   call showMessageDialog with "Copy-stack cleared"
+  else if currentChar is equal to "BACKSPACE" then
+   call backspace
+   store 0 in saved
+  ELSE IF CURRENTCHAR IS EQUAL TO "DELETE" THEN
+    CALL DELETE
+  end if
+ end if
+repeat
+
+sub insertCopyStack
+local data:
+    i is number
+    j is number
+    swap is text list
+procedure:
+    for i from 0 to lineCount step 1 do
+        if i is equal to row then
+            for j from 0 to copyStackLength step 1 do
+                push copyStack:j to swap
+            repeat
+        end if
+        push lines:i to swap
+    repeat
+    copy swap to lines
+end sub
+
+sub locateCursor
+ local data:
+  maxY is number
+  maxX is number
+  linesOnScreen is number
+  curLineLength is number
+  maxColumnOffset is number
+  maxLineLengthForX is number
+ procedure:
+  in maxY solve screenHeight - 2
+  in maxX solve screenWidth - 2
+  get length of lines in lineCount
+  while row is greater than or equal to lineCount do
+    in row solve row - 1
+  repeat
+  get length of lines:row in curLineLength
+  in linesOnScreen solve lineCount - rowOffset
+  if linesOnScreen is greater than maxY then
+    store maxY in linesOnScreen
+  end if
+  in maxColumnOffset solve curLineLength - maxX + 1
+  if maxColumnOffset is less than 0 then
+    store 0 in maxColumnOffset
+  end if
+
+  # --- Relocate cursorY
+  if cursorY is less than 1 then
+   store 1 in cursorY
+  else if cursorY is greater than maxY then
+   store maxY in cursorY
+  else if cursorY is greater than or equal to linesOnScreen then
+   in cursorY solve linesOnScreen
+  end if
+
+  # --- Relocate cursorX
+  in maxLineLengthForX solve curLineLength + 1
+  if maxX is less than maxLineLengthForX then
+    store maxX in maxLineLengthForX
+  end if
+  if cursorX is less than 1 then
+   store 1 in cursorX
+  else if cursorY is greater than maxX then
+   store maxX in cursorY
+  else if cursorX is greater than or equal to maxLineLengthForX then
+   in cursorX solve maxLineLengthForX
+  end if
+
+  # --- Relocate columnOffset
+  if columnOffset is greater than maxColumnOffset then
+    store maxColumnOffset in columnOffset
+  end if
+  nc move to cursorX cursorY
+  in row solve cursorY - 1 + rowOffset
+  IN COLUMN SOLVE CURSORX - 1 + COLUMNOFFSET
+end sub
+
+sub drawText
+ local data:
+  i is number
+  maxY is number
+  y is number
+  maxLineLength is number
+  lineLength is number
+  lineWritten is text
+  lineX is number
+  totalOffset is number
+ procedure:
+  store 1 in y
+  in maxY solve screenHeight - 1
+  in maxLineLength solve screenWidth - 2
+  for i from rowOffset to lineCount step 1 do
+   store 1 in lineX
+   get length of lines:i in lineLength
+   if lineLength is greater than or equal to maxLineLength then
+    if i is equal to row then
+        substring lines:i from columnOffset length maxLineLength in lineWritten
+        in totalOffset solve columnOffset + maxLineLength
+    else
+        substring lines:i from 0 length maxLineLength in lineWritten
+        in totalOffset solve maxLineLength
+    end if
+    if totalOffset is less than or equal to lineLength then
+     in lineWritten join lineWritten "┊"
+    end if
+    if row is equal to i and columnOffset is greater than 0 then
+     in lineX solve lineX - 1
+     in lineWritten join "┊" lineWritten
+    end if
+    nc move to lineX y
+    nc write lineWritten
+   else
+    nc move to lineX y
+    nc write lines:i
+   end if
+   in y solve y + 1
+   if y is equal to maxY then
+    break
+   end if
+  repeat
+end sub
+
+sub moveCursorDown
+ local data:
+  maxLines is number
+  maxY is number
+ procedure:
+  get length of lines in lineCount
+  in maxLines solve lineCount - (screenHeight - 2)
+  in maxY solve screenHeight - 2
+  if cursorY is less than maxY then
+   in cursorY solve cursorY + 1
+  else
+   if rowOffset is less than maxLines then
+    in rowOffset solve rowOffset + 1
+   end if
+  end if
+end sub
+
+sub moveCursorUp
+ local data:
+  minY is number
+ procedure:
+  get length of lines in lineCount
+  in minY solve 1
+  if cursorY is greater than minY then
+   in cursorY solve cursorY - 1
+  else
+   if rowOffset is greater than 0 then
+    in rowOffset solve rowOffset - 1
+   end if
+  end if
+end sub
+
+sub moveCursorRight
+ local data:
+  maxX is number
+  maxOffset is number
+ procedure:
+  in maxX solve screenWidth - 2
+  in maxOffset solve currentLineLength - maxX + 1
+  if cursorX is less than maxX then
+    in cursorX solve cursorX + 1
+  else
+   if columnOffset is less than or equal to maxOffset then
+    in columnOffset solve columnOffset + 1
+   end if
+  end if
+end sub
+
+sub moveToNexTline
+  if column is equal to currentLineLength then
+    call moveCursorDown
+    call locateCursor
+    call locateXStart
+  end if
+end sub
+
+sub moveCursorLeft
+  if column is equal to 0 and row is greater than 0 then
+    call moveCursorUp
+    call locateCursor
+    call locateXEnd
+    return
+  end if
+  if cursorX is greater than 1 then
+   in cursorX solve cursorX - 1
+  else
+   if columnOffset is greater than 0 then
+    in columnOffset solve columnOffset - 1
+   end if
+  end if
+end sub
+
+sub backspace
+ local data:
+  curLineLength is number
+  maxLineWidth is number
+  TEXTHEAD IS TEXT
+  TEXTTAIL IS TEXT
+  FROM IS NUMBER
+  TO IS NUMBER
+  deletedLine is text
+ procedure:
+  in maxLineWidth solve screenWidth - 3
+  get length of lines:row in curLineLength
+  if column is greater than 0 then
+   in curLineLength solve curLineLength - 1
+   IN TO SOLVE COLUMN - 1
+   IN FROM SOLVE COLUMN
+   SUBSTRING LINES:ROW FROM 0 LENGTH TO IN TEXTHEAD
+   SUBSTRING LINES:ROW FROM FROM LENGTH CURLINELENGTH IN TEXTTAIL
+   IN LINES:ROW JOIN TEXTHEAD TEXTTAIL
+   # Acá antes también decía "curLineLength is less than maxLineWidth" no sé para qué
+   if columnOffset is equal to 0 and curLineLength is greater than 0 then
+    call moveCursorLeft
+   end if
+  else
+   if row is greater than 1 then
+       store lines:row in deletedLine
+       call spliceLine
+       in row solve row - 1
+       CALL LOCATEXEND
+       in lines:row join lines:row deletedLine
+    end if
+  end if
+end sub
+
+sub delete
+ local data:
+  curLineLength is number
+  maxLineWidth is number
+  TEXTHEAD IS TEXT
+  TEXTTAIL IS TEXT
+  FROM IS NUMBER
+  TO IS NUMBER
+  rowCountMinusOne is number
+ procedure:
+  in maxLineWidth solve screenWidth - 3
+  get length of lines:row in curLineLength
+  if curLineLength is greater than 0 then
+   if curLineLength is equal to 0 then
+     return
+   end if
+   in curLineLength solve curLineLength - 1
+   IN TO SOLVE COLUMN 
+   IN FROM SOLVE COLUMN + 1
+   SUBSTRING LINES:ROW FROM 0 LENGTH TO IN TEXTHEAD
+   SUBSTRING LINES:ROW FROM FROM LENGTH CURLINELENGTH IN TEXTTAIL
+   IN LINES:ROW JOIN TEXTHEAD TEXTTAIL
+   if columnOffset is greater than 0 then
+    call moveCursorRight
+   end if
+  else
+   in rowCountMinusOne solve lineCount - 1
+   if row is less than rowCountMinusOne then
+       call spliceLine
+       if row is greater than 0 then
+            CALL MOVECURSORDOWN
+       end if
+   end if
+  end if
+end sub
+
+sub spliceLine
+ local data:
+  rowToSplice is number
+ procedure:
+  if lineCount is greater than 1 then
+      store row in rowToSplice
+      call moveCursorUp
+      splice element rowToSplice of list lines
+  else
+    store "" in lines:0
+  end if
+  store 0 in saved
+end sub
+
+sub locateXEnd
+    local data:
+        lineLength is number
+        maxX is number
+    procedure:
+        in maxX solve screenWidth - 2
+        get length of lines:row in lineLength
+        in lineLength solve lineLength + 1
+        if lineLength is less than or equal to maxX then
+            store 0 in columnOffset
+            store lineLength in cursorX
+        else
+            in columnOffset solve lineLength - maxX + 1
+            store maxX in cursorX
+        end if
+        call locateCursor
+end sub
+
+SUB LOCATEXSTART
+    STORE 0 IN CURSORX
+    STORE 0 IN COLUMNOFFSET
+    CALL LOCATECURSOR
+END SUB
+
+sub lineBreak
+ local data:
+  i is number
+  swap is text list
+  currentRow is number
+  countMinusOne is number
+  TEXTTAIL IS TEXT
+ procedure:
+  in countMinusOne solve lineCount - 1
+  # Add line at the end
+  in currentRow solve row + 1
+  if row is equal to countMinusOne then
+   push "" to lines
+  else
+   # Add line between two lines
+   for i from 0 to lineCount step 1 do
+    if i is equal to currentRow then
+     IF COLUMN IS EQUAL TO CURRENTLINELENGTH THEN
+         push "" to swap
+     ELSE
+         SUBSTRING LINES:ROW FROM COLUMN LENGTH CURRENTLINELENGTH IN TEXTTAIL
+         PUSH TEXTTAIL TO SWAP
+         SUBSTRING LINES:ROW FROM 0 LENGTH COLUMN IN SWAP:ROW
+         call locateXStart
+     END IF
+    end if
+    push lines:i to swap
+   repeat
+   copy swap to lines
+  end if
+  call moveCursorDown
+end sub
+
+sub showMessageDialog
+parameters:
+    message is text
+local data:
+    x is number
+    y is number
+    w is number
+    h is number
+procedure:
+    get length of message in w
+    in w solve w + 2
+    in h solve 3
+    in x solve (screenWidth / 2) - (w / 2)
+    in y solve (screenHeight / 2) - 1
+    floor x
+    floor y
+    nc shadow box x y w h
+    in x solve x + 1
+    in y solve y + 1
+    nc move to x y
+    nc write message
+    nc hide cursor
+    nc repaint
+    wait 250 milliseconds
+    nc show cursor
+end sub
+
+sub save
+ local data:
+  i is text
+  CL IS NUMBER
+  dialogX is number
+  dialogY is number
+  dialogW is number
+  dialogH is number
+  dialogMessage is text
+ procedure:
+  in dialogMessage join "Saving " filename "..."
+  get length of dialogMessage in dialogW
+  in dialogW solve dialogW + 2
+  in dialogX solve (screenWidth / 2) - (dialogW / 2)
+  floor dialogX
+  in dialogY solve (screenHeight / 2) - 2
+  floor dialogY
+  in dialogH solve 3
+  nc shadow box dialogX dialogY dialogW dialogH
+  in dialogX solve dialogX + 1
+  in dialogY solve dialogY + 1
+  nc move to dialogX dialogY
+  nc write dialogMessage
+  nc hide cursor
+  nc repaint
+  store "" in fileContents
+  STORE 0 IN CL
+  for each i in lines do
+   in fileContents join fileContents i
+   IN CL SOLVE CL + 1
+   IF CL IS LESS THAN LINECOUNT THEN
+     IN FILECONTENTS JOIN FILECONTENTS "\n"
+   END IF
+  repeat
+  write fileContents to file filename
+  nc show cursor
+  if errorcode is equal to 0 then
+   store 1 in saved
+  end if
+end sub
+
+sub writeLineNumber
+ local data:
+  x is number
+  y is number
+  lineNumber is number
+  msg is text
+  col is number
+  maxCol is number
+ procedure:
+  in y solve screenHeight - 1
+  in lineNumber solve row + 1
+  in col solve column + 1
+  in maxCol solve currentLineLength + 1
+  in msg join " col " col "/" maxCol " line " lineNumber "/" lineCount " "
+  get length of msg in lineNumber
+  in x solve screenWidth - lineNumber - 1
+  nc move to x y
+  nc write msg
+end sub
+
+sub writeFilename
+ local data:
+  l is number
+  x is number
+  msg is text
+ procedure:
+  in msg join " " filename
+  if saved is equal to 1 then
+   in msg join msg ", saved "
+  else
+   in msg join msg ", not saved "
+  end if
+  get length of msg in l
+  in x solve screenWidth - l - 1
+  nc move to x 0
+  nc write msg
+end sub
+
+sub addChar
+local data:
+    textHead is text
+    textTail is text
+    lineLength is number
+    charLength is number
+procedure:
+    GET LENGTH OF LINES:ROW IN LINELENGTH
+    GET LENGTH OF CURRENTCHAR IN CHARLENGTH
+    substring lines:row from 0 length column in textHead
+    substring lines:row from COLUMN LENGTH LINELENGTH IN TEXTTAIL
+    IN LINES:ROW JOIN TEXTHEAD CURRENTCHAR TEXTTAIL
+    FOR I FROM 0 TO CHARLENGTH STEP 1 DO
+        CALL MOVECURSORRIGHT
+    REPEAT
+end sub

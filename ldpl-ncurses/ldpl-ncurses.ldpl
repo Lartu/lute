@@ -1,0 +1,260 @@
+extension "ldpl-ncurses.cpp"
+flag "-lncursesw"
+
+data:
+NCURSES_LDPLLIB_COLOR is external number
+NCURSES_LDPLLIB_X is external number
+NCURSES_LDPLLIB_Y is external number
+NCURSES_LDPLLIB_W is external number
+NCURSES_LDPLLIB_H is external number
+NCURSES_LDPLLIB_TEXT is external text
+NCURSES_LDPLLIB_CHAR is external text
+
+procedure:
+
+sub NCURSES_LDPLLIB_.getSize
+    parameters:
+        w is number
+        h is number
+    procedure:
+        call external NCURSES_LDPLLIB_SIZE
+        store NCURSES_LDPLLIB_W in w
+        store NCURSES_LDPLLIB_H in h
+end sub
+create statement "NC GET SIZE IN $ $" executing NCURSES_LDPLLIB_.getSize
+
+sub NCURSES_LDPLLIB_.startScreen
+    call external NCURSES_LDPLLIB_INITIALIZE_SCREEN
+end sub
+create statement "NC INITIALIZE" executing NCURSES_LDPLLIB_.startScreen
+
+sub NCURSES_LDPLLIB_.endScreen
+    call external NCURSES_LDPLLIB_END_SCREEN
+end sub
+create statement "NC CLEAN UP" executing NCURSES_LDPLLIB_.endScreen
+
+sub NCURSES_LDPLLIB_.echoOn
+    call external NCURSES_LDPLLIB_MODE_ECHO
+end sub
+create statement "NC ENABLE ECHO" executing NCURSES_LDPLLIB_.echoOn
+
+sub NCURSES_LDPLLIB_.echoOff
+    call external NCURSES_LDPLLIB_MODE_NOECHO
+end sub
+create statement "NC DISABLE ECHO" executing NCURSES_LDPLLIB_.echoOff
+
+sub NCURSES_LDPLLIB_.blockOn
+    call external NCURSES_LDPLLIB_MODE_GET_BLOCKING
+end sub
+create statement "NC SET BLOCKING INPUT" executing NCURSES_LDPLLIB_.blockOn
+
+sub NCURSES_LDPLLIB_.blockOff
+    call external NCURSES_LDPLLIB_MODE_GET_NOTBLOCKING
+end sub
+create statement "NC SET NON BLOCKING INPUT" executing NCURSES_LDPLLIB_.blockOff
+
+sub NCURSES_LDPLLIB_.enable_color
+    call external NCURSES_LDPLLIB_ENABLE_COLOR
+end sub
+create statement "NC ENABLE COLOR" executing NCURSES_LDPLLIB_.enable_color
+
+sub NCURSES_LDPLLIB_.setColor
+    parameters:
+        color is number
+    procedure:
+        store color in NCURSES_LDPLLIB_COLOR
+        call external NCURSES_LDPLLIB_SET_CHARCOLOR
+end sub
+create statement "NC SET COLOR $" executing NCURSES_LDPLLIB_.setColor
+
+sub NCURSES_LDPLLIB_.move
+    parameters:
+        x is number 
+        y is number 
+    procedure:
+        store x in NCURSES_LDPLLIB_X
+        store y in NCURSES_LDPLLIB_Y
+        call external NCURSES_LDPLLIB_MOVE
+end sub 
+create statement "NC MOVE TO $ $" executing NCURSES_LDPLLIB_.move
+
+sub NCURSES_LDPLLIB_.write
+    parameters:
+        t is text
+    procedure:
+        store t in NCURSES_LDPLLIB_TEXT
+        call external NCURSES_LDPLLIB_WRITE
+end sub
+create statement "NC WRITE $" executing NCURSES_LDPLLIB_.write
+
+sub NCURSES_LDPLLIB_.writeNum
+    parameters:
+        t is number
+    procedure:
+        store t in NCURSES_LDPLLIB_TEXT
+        call external NCURSES_LDPLLIB_WRITE
+end sub
+create statement "NC WRITE $" executing NCURSES_LDPLLIB_.writeNum
+
+sub NCURSES_LDPLLIB_.refresh
+    call external NCURSES_LDPLLIB_REFRESH
+end sub
+create statement "NC REPAINT" executing NCURSES_LDPLLIB_.refresh
+
+sub NCURSES_LDPLLIB_.showcursor
+    call external NCURSES_LDPLLIB_SHOWCURSOR
+end sub
+create statement "NC SHOW CURSOR" executing NCURSES_LDPLLIB_.showcursor
+
+sub NCURSES_LDPLLIB_.hidecursor
+    call external NCURSES_LDPLLIB_HIDECURSOR
+end sub
+create statement "NC HIDE CURSOR" executing NCURSES_LDPLLIB_.hidecursor
+
+sub NCURSES_LDPLLIB_.getchar
+    parameters:
+        t is text
+    procedure:
+        call external NCURSES_LDPLLIB_GETCHAR
+        store NCURSES_LDPLLIB_CHAR in t
+end sub
+create statement "NC GET KEY IN $ " executing NCURSES_LDPLLIB_.getchar
+
+sub NCURSES_LDPLLIB_.box
+    parameters:
+        x is number
+        y is number 
+        w is number 
+        h is number
+    local data:
+        i is number
+        j is number
+        _x is number
+        _y is number
+        _w is number
+        _h is number
+    procedure:
+        for i from 0 to w step 1 do
+            for j from 0 to h step 1 do
+                in _x solve x + i
+                in _y solve y + j
+                nc move to _x _y
+                nc write " "
+            repeat
+        repeat
+        in _w solve w - 1
+        for i from 1 to _w step 1 do
+            in _x solve x + i
+            in _y solve y + h - 1
+            nc move to _x y
+            nc write "═"
+            nc move to _x _y
+            nc write "═"
+        repeat
+        in _h solve h - 1
+        for i from 1 to _h step 1 do
+            in _x solve x + w - 1
+            in _y solve y + i
+            nc move to x _y
+            nc write "║"
+            nc move to _x _y
+            nc write "║"
+        repeat
+        in _x solve x + w - 1
+        in _y solve y + h - 1
+        nc move to x y
+        nc write "╔"
+        nc move to _x y
+        nc write "╗"
+        nc move to x _y
+        nc write "╚"
+        nc move to _x _y
+        nc write "╝"
+end sub
+create statement "NC BOX $ $ $ $" executing NCURSES_LDPLLIB_.box
+
+sub NCURSES_LDPLLIB_.titlebox
+    parameters:
+        title is text
+        x is number
+        y is number 
+        w is number 
+        h is number
+    local data:
+        len is number
+        _w is number
+        _x is number
+    procedure:
+        nc box x y w h 
+        get length of title in len
+        in _w solve w - 2
+        if len is greater than _w then
+            substring title from 0 length _w in title
+        end if
+        in _x solve x + 1
+        nc move to _x y
+        nc write title
+end sub
+create statement "NC BOX $ $ $ $ $" executing NCURSES_LDPLLIB_.titlebox
+
+sub NCURSES_LDPLLIB_.shadowbox
+    parameters:
+        x is number
+        y is number 
+        w is number 
+        h is number
+    local data:
+        _color is number
+        _x is number
+        _y is number
+        i is number
+        j is number
+    procedure:
+        store NCURSES_LDPLLIB_COLOR in _color
+        nc set color 7
+        
+        for i from 0 to w step 1 do
+            for j from 0 to h step 1 do
+                in _x solve x + i + 1
+                in _y solve y + j + 1
+                nc move to _x _y
+                nc write " "
+            repeat
+        repeat
+
+        nc set color _color
+        nc box x y w h
+end sub
+create statement "NC SHADOW BOX $ $ $ $" executing NCURSES_LDPLLIB_.shadowbox
+
+
+sub NCURSES_LDPLLIB_.shadowboxTitle
+    parameters:
+        title is text
+        x is number
+        y is number 
+        w is number 
+        h is number
+    local data:
+        _color is number
+        _x is number
+        _y is number
+        i is number
+        j is number
+    procedure:
+        store NCURSES_LDPLLIB_COLOR in _color
+        nc set color 7
+        
+        for i from 0 to w step 1 do
+            for j from 0 to h step 1 do
+                in _x solve x + i + 1
+                in _y solve y + j + 1
+                nc move to _x _y
+                nc write " "
+            repeat
+        repeat
+
+        nc set color _color
+        nc box title x y w h
+end sub
+create statement "NC SHADOW BOX $ $ $ $ $" executing NCURSES_LDPLLIB_.shadowboxTitle
