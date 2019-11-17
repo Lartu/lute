@@ -64,7 +64,7 @@ nc enable color
 nc disable echo
 store 2 in mainColor
 nc set color mainColor
-nc set non blocking input
+nc set blocking input
 while 1 is equal to 1 do
  nc get size in screenWidth screenHeight
  get length of lines in lineCount
