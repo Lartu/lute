@@ -34,6 +34,12 @@ Run `lute <file>` to open `<file>` and edit it.
  - **Control-U**: paste all the copy-stack before the current line.
  - **Control-R**: empty the copy-stack.
  - **Control-D**: delete the current line.
- 
- ### License
- Lute was created by [Lartu](https://lartu.net) and is released under the MIT license.
+
+### Roadmap
+
+[ ] Undo
+[ ] Redo
+[ ] Fix "not saved" message when creating a new file.
+
+### License
+Lute was created by [Lartu](https://lartu.net) and is released under the MIT license.
