@@ -9,6 +9,7 @@
 # Written by Martín del Río - 2019 (7/nov/2019)
 # Changelog:
 # 1.0 - Initial release (9/nov/2019)
+# 1.1 - Added tab support (with diamond character, 7/jan/2020)
 
 # TODOs:
 # - Confirm to save (filename dialog)
@@ -113,7 +114,7 @@ while 1 is equal to 1 do
   else if currentChar is equal to "LEFT" then
    call moveCursorLeft
   else if currentChar is equal to "C-I" then
-   store "    " in currentChar
+   store "\t" in currentChar
    call addChar
   else if currentChar is equal to "C-M" then
    call lineBreak
@@ -270,10 +271,12 @@ sub drawText
      in lineWritten join "┊" lineWritten
     end if
     nc move to lineX y
+    replace "\t" from lineWritten with "◊" in lineWritten
     nc write lineWritten
    else
     nc move to lineX y
-    nc write lines:i
+    replace "\t" from lines:i with "◊" in lineWritten
+    nc write lineWritten
    end if
    in y solve y + 1
    if y is equal to maxY then
@@ -558,9 +561,7 @@ sub save
   repeat
   write fileContents to file filename
   nc show cursor
-  if errorcode is equal to 0 then
-   store 1 in saved
-  end if
+  store 1 in saved
 end sub
 
 sub writeLineNumber
