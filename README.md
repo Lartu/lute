@@ -37,9 +37,10 @@ Run `lute <file>` to open `<file>` and edit it.
 
 ### Roadmap
 
-[ ] Undo
-[ ] Redo
-[ ] Fix "not saved" message when creating a new file.
+ - [ ] Undo
+ - [ ] Redo
+ - [x] Fix "not saved" message when creating a new file.
+ - [x] Tab support.
 
 ### License
 Lute was created by [Lartu](https://lartu.net) and is released under the MIT license.
