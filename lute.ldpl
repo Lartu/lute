@@ -45,6 +45,7 @@ mainColor             is number
 currentLineLength     is number
 copyStack             is text list
 copyStackLength       is number
+tabMode               is number
 
 # --- Procedure ---
 procedure:
@@ -114,8 +115,18 @@ while 1 is equal to 1 do
   else if currentChar is equal to "LEFT" then
    call moveCursorLeft
   else if currentChar is equal to "C-I" then
-   store "\t" in currentChar
+   if tabMode is equal to 1 then
+       store "\t" in currentChar
+   else
+       store "    " in currentChar
+   end if
    call addChar
+  else if currentChar is equal to "C-B" then
+   if tabMode is equal to 0 then
+     store 1 in tabMode
+   else
+     store 0 in tabMode
+   end if
   else if currentChar is equal to "C-M" then
    call lineBreak
    store 0 in saved
@@ -175,6 +186,7 @@ procedure:
         if i is equal to row then
             for j from 0 to copyStackLength step 1 do
                 push copyStack:j to swap
+                call moveCursorDown
             repeat
         end if
         push lines:i to swap
@@ -536,20 +548,7 @@ sub save
   dialogMessage is text
  procedure:
   in dialogMessage join "Saving " filename "..."
-  get length of dialogMessage in dialogW
-  in dialogW solve dialogW + 2
-  in dialogX solve (screenWidth / 2) - (dialogW / 2)
-  floor dialogX
-  in dialogY solve (screenHeight / 2) - 2
-  floor dialogY
-  in dialogH solve 3
-  nc shadow box dialogX dialogY dialogW dialogH
-  in dialogX solve dialogX + 1
-  in dialogY solve dialogY + 1
-  nc move to dialogX dialogY
-  nc write dialogMessage
-  nc hide cursor
-  nc repaint
+  call showMessageDialog with dialogMessage
   store "" in fileContents
   STORE 0 IN CL
   for each i in lines do
@@ -562,6 +561,8 @@ sub save
   write fileContents to file filename
   nc show cursor
   store 1 in saved
+  in dialogMessage join "Saved as " filename "."
+  call showMessageDialog with dialogMessage
 end sub
 
 sub writeLineNumber
